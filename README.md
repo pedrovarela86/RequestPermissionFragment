@@ -1,8 +1,9 @@
 # RequestPermissionFragment
 This is an abstract class, I use to easily request permissions in Android +6.0. To use it extend the abstract fragment in the fragments that needs to request permissions. 
 
-
 public class MyFragment extends RequestPermissionFragment {
+	
+	
 	@Override
 	public void onPermissionsGranted(int requestCode) {
 		
@@ -18,6 +19,7 @@ public class MyFragment extends RequestPermissionFragment {
 		
 	}
 }
+
 
 Then, check the permission wherever you need it like this. 
 
