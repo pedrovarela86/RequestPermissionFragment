@@ -1,0 +1,172 @@
+package com.fyndeverything.helpers;
+
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.support.annotation.NonNull;
+import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentTransaction;
+import android.support.v4.content.ContextCompat;
+import android.util.SparseIntArray;
+import android.view.View;
+
+import com.fyndeverything.R;
+import com.fyndeverything.app.util.LocationPermissionDialog;
+
+/**
+ * Created by pedro on 9/14/16.
+ *
+ * Use this helper fragment to request permissions.
+ * <p>
+ * Implement the following methods in your concrete fragment to handle results
+ * <ul>
+ * <li>{@link RequestPermissionFragment#onShouldShowRequestPermissionsRationale()}</li>
+ * <p>
+ * <li>{@link RequestPermissionFragment#onPermissionsDenied(int)}</li>
+ * <p>
+ * <li>{@link RequestPermissionFragment#onPermissionsGranted(int)}</li>
+ * </ul>
+ * <p>
+ */
+
+public abstract class RequestPermissionFragment extends Fragment {
+	
+	
+	public int REQUEST_CODE_ACCESS_FINE_LOCATION = 1;
+	
+	/**
+	 * Request needed permissions
+	 *
+	 * @param requestedPermissions Permissions to be requested
+	 * @param requestCode          Request code
+	 */
+	public void requestAppPermissions(final String[] requestedPermissions, final int requestCode) {
+		int permissionCheck = PackageManager.PERMISSION_GRANTED;
+		
+		boolean shouldShowRequestPermissionRationale = false;
+		
+		for (String permission : requestedPermissions) {
+			permissionCheck += ContextCompat.checkSelfPermission(getActivity(), permission);
+			shouldShowRequestPermissionRationale = shouldShowRequestPermissionRationale || ActivityCompat.shouldShowRequestPermissionRationale(getActivity(), permission);
+		}
+		
+		if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+			onPermissionsGranted(requestCode);
+		} else {
+			if (shouldShowRequestPermissionRationale) {
+				onShouldShowRequestPermissionsRationale();
+			} else {
+				requestPermissions(requestedPermissions, requestCode);
+			}
+		}
+	}
+	
+	/**
+	 * Handled when the requested permissions are granted
+	 *
+	 * @param requestCode Request code
+	 */
+	public abstract void onPermissionsGranted(int requestCode);
+	
+	/**
+	 * Handled when should show requested permissions rationale in needed
+	 */
+	public abstract void onShouldShowRequestPermissionsRationale();
+	
+	/**
+	 * On request permissions result
+	 *
+	 * @param requestCode  Request code
+	 * @param permissions  Permissions
+	 * @param grantResults Results
+	 */
+	@Override
+	public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+		
+		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+		
+		int permissionCheck = PackageManager.PERMISSION_GRANTED;
+		
+		for (int permission : grantResults) {
+			permissionCheck = permissionCheck + permission;
+		}
+		
+		if ((grantResults.length > 0) && PackageManager.PERMISSION_GRANTED == permissionCheck) {
+			onPermissionsGranted(requestCode);
+		} else {
+			onPermissionsDenied(requestCode);
+		}
+	}
+	
+	
+	/**
+	 * Handled when the permissions requested are denied
+	 *
+	 * @param requestCode Request code
+	 */
+	public abstract void onPermissionsDenied(int requestCode);
+	
+	
+	/**
+	 * Show rationale dialog fragment requesting location
+	 */
+	public void showRationaleLocationDialog() {
+		
+		FragmentTransaction fragmentTransaction = getActivity()
+				.getSupportFragmentManager()
+				.beginTransaction();
+		
+		Fragment prev = getActivity().getSupportFragmentManager().findFragmentByTag("dialog");
+		
+		if (prev != null) {
+			fragmentTransaction.remove(prev);
+		}
+		
+		fragmentTransaction.addToBackStack(null);
+		
+		DialogFragment dialogFragment = LocationPermissionDialog.newInstance(DialogFragment.STYLE_NO_TITLE);
+		
+		dialogFragment.setTargetFragment(this, LocationPermissionDialog.REQUEST_CODE_ALLOW_LOCATION);
+		
+		dialogFragment.show(fragmentTransaction, "rationale_dialog");
+	}
+	
+	/**
+	 * Make snack bar with open settings action
+	 *
+	 * @param parent            Parent view of the snack bar
+	 * @param messageResourceId Message resource id of the snack bar
+	 */
+	public void makeSnackBarSettings(View parent, int messageResourceId) {
+		Snackbar.make(parent, messageResourceId, Snackbar.LENGTH_INDEFINITE)
+				.setAction(R.string.permission_settings, v -> openSettings())
+				.show();
+	}
+	
+	/**
+	 * Open System Settings for this application
+	 */
+	public void openSettings() {
+		Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+		intent.setData(Uri.parse("package:" + getActivity().getPackageName()));
+		startActivity(intent);
+	}
+	
+	/**
+	 * Dismiss the dialog fragment using fragment transaction
+	 * and finding it in the stack
+	 */
+	public void hideRationaleDialogFragment() {
+		
+		FragmentTransaction fragmentTransaction = getFragmentManager().beginTransaction();
+		
+		Fragment dialogFragment = getFragmentManager().findFragmentByTag("dialog");
+		
+		if (dialogFragment != null) {
+			fragmentTransaction.remove(dialogFragment).commit();
+		}
+	}
+}
